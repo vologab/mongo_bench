@@ -66,10 +66,10 @@ const getConnection = async () => {
   return await client.db(process.env.DB_NAME);
 };
 
-const N = 2000000;
-const BATCH_SIZE = 20000;
-const DOC_SIZE_FACTOR = 10;
-const COLL_NAME = "agg_perf_test";
+const DOCUMENTS_COUNT = Number(process.env.DOCUMENTS_COUNT);
+const BATCH_SIZE = Number(process.env.INSERT_BATCH_SIZE);
+const DOC_SIZE_FACTOR = Number(process.env.DOC_SIZE_FACTOR);
+const COLL_NAME = process.env.COLL_NAME;
 
 const aggregationQuery1Fun = months => [
   {
@@ -142,7 +142,7 @@ const generate = async conn => {
   let docInitial;
   let extendedDoc;
 
-  for (let i = 0; i < N; i++) {
+  for (let i = 0; i < DOCUMENTS_COUNT; i++) {
     docInitial = jsf.generate(doc);
     extendedDoc = [...Array(DOC_SIZE_FACTOR).keys()]
       .map(ix => ({
