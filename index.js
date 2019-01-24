@@ -66,8 +66,8 @@ const getConnection = async () => {
   return await client.db(process.env.DB_NAME);
 };
 
-const N = 500000;
-const BATCH_SIZE = 10000;
+const N = 2000000;
+const BATCH_SIZE = 20000;
 const DOC_SIZE_FACTOR = 10;
 const COLL_NAME = "agg_perf_test";
 
@@ -172,29 +172,31 @@ const getDatabaseStat = async (conn, collection) => {
 };
 
 const benchmark = async (conn, collection, pipelineBuilder, months) => {
+  // Get database/collection statistics
+  const dbStat = await getDatabaseStat(conn, COLL_NAME);
+  generateReportTitle();
   const results = [];
-  for (let m = 0; m < months; m++) {
-    results.push(
-      await measureQueryMultipleTimes(conn, collection, pipelineBuilder(m), 10)
+  for (let m = 1; m < months; m++) {
+    generateReport(
+      dbStat,
+      await measureQueryMultipleTimes(conn, collection, pipelineBuilder(m), 5)
     );
   }
-
-  return results;
 };
 
-const generateReport = (dbStat, benchResults) => {
+const generateReportTitle = () => {
   console.log(
     `Instance, Ram size, Cpu size, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, other response times`
   );
-  benchResults.forEach(r => {
-    console.log(
-      `${process.env.INSTANCE_TYPE},${process.env.RAM_SIZE},${
-        process.env.CPU_CORES
-      },${dbStat.size},${dbStat.count},${dbStat.avgObjSize},${r.count},${_.mean(
-        r.stats
-      )},${Math.round(r.count / _.mean(r.stats))},${r.stats.join(",")}`
-    );
-  });
+};
+const generateReport = (dbStat, r) => {
+  console.log(
+    `${process.env.INSTANCE_TYPE},${process.env.RAM_SIZE},${
+      process.env.CPU_CORES
+    },${dbStat.size},${dbStat.count},${dbStat.avgObjSize},${r.count},${_.mean(
+      r.stats
+    )},${Math.round(r.count / _.mean(r.stats))},${r.stats.join(",")}`
+  );
 };
 
 const run = async () => {
@@ -206,9 +208,6 @@ const run = async () => {
   }
 
   if (process.env.RUN_BENCHMARK === "true") {
-    // Get database/collection statistics
-    const dbStat = await getDatabaseStat(conn, COLL_NAME);
-
     // Start benchamarking
     const pipeLineBuilder = months => {
       return [
@@ -219,10 +218,7 @@ const run = async () => {
       ];
     };
 
-    const benchResults = await benchmark(conn, COLL_NAME, pipeLineBuilder, 11);
-    //console.log(benchResults);
-
-    generateReport(dbStat, benchResults);
+    await benchmark(conn, COLL_NAME, pipeLineBuilder, 5);
   }
 
   process.exit(0);
