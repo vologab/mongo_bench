@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "Fake object",
+  "required": [
+    "category",
+    "date",
+    "coordinates",
+    "location",
+    "geojson_location",
+    "uuid",
+    "flag",
+    "count",
+    "url",
+    "version",
+    "model",
+    "locale"
+  ],
+  "properties": {
+    "category": {
+      "type": "string",
+      "enum": ["AAA", "BBB", "CCC", "DDD"]
+    },
+    "date": {
+      "type": "object",
+      "faker": "date.past",
+      "$comment": "Use object type for saving Date object to MongoDb"
+    },
+    "coordinates": {
+      "type": "object",
+      "required": ["latitude", "longitude", "accuracy"],
+      "properties": {
+        "latitude": {
+          "type": "integer",
+          "faker": "address.latitude"
+        },
+        "longitude": {
+          "type": "number",
+          "faker": "address.longitude"
+        },
+        "accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "required": [
+        "city",
+        "country",
+        "countryCode",
+        "timezone",
+        "organization"
+      ],
+      "properties": {
+        "city": {
+          "type": "object",
+          "required": ["en"],
+          "properties": {
+            "en": {
+              "type": "string",
+              "faker": "address.city"
+            }
+          }
+        },
+        "country": {
+          "type": "object",
+          "required": ["en"],
+          "properties": {
+            "en": {
+              "type": "string",
+              "faker": "address.country"
+            }
+          }
+        },
+        "state": {
+          "type": "object",
+          "required": ["en"],
+          "properties": {
+            "en": {
+              "type": "string",
+              "faker": "address.state"
+            }
+          }
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "postalCode": {
+          "type": "string",
+          "faker": "address.zipCode"
+        },
+        "countryCode": {
+          "type": "string",
+          "faker": "address.countryCode"
+        }
+      }
+    },
+    "geojson_location": {
+      "type": "object",
+      "required": ["type", "coordinates"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["Point"]
+        },
+        "coordinates": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          }
+        }
+      }
+    },
+    "uuid": {
+      "type": "string",
+      "faker": "random.uuid"
+    },
+    "count": {
+      "type": "integer",
+      "minimim": 10
+    },
+    "flag": {
+      "type": "boolean"
+    },
+    "os_name": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string",
+      "faker": "internet.url"
+    },
+    "version": {
+      "type": "string",
+      "faker": "system.semver"
+    },
+    "model": {
+      "type": "string",
+      "faker": "commerce.product"
+    },
+    "locale": {
+      "type": "string",
+      "faker": "random.locale"
+    },
+    "manufacturer": {
+      "type": "string"
+    }
+  }
+}
