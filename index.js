@@ -103,9 +103,13 @@ const aggregationQueryLimit = [{ $limit: 200 }];
 
 const getQueryTime = async (conn, collection, query) => {
   const t = new Date();
+  const additionalOptions = {};
+  if (process.env.DB_AGGR_ALLOW_DISK_USE === "true") {
+    additionalOptions.allowDiskUse = true;
+  }
   await conn
     .collection(collection)
-    .aggregate(query)
+    .aggregate(query, additionalOptions)
     .toArray();
   return new Date() - t;
 };
@@ -176,7 +180,7 @@ const benchmark = async (conn, collection, pipelineBuilder, months) => {
   const dbStat = await getDatabaseStat(conn, COLL_NAME);
   generateReportTitle();
   const results = [];
-  for (let m = 1; m < months; m++) {
+  for (let m = 0; m < months; m++) {
     generateReport(
       dbStat,
       await measureQueryMultipleTimes(conn, collection, pipelineBuilder(m), 5)
@@ -218,7 +222,7 @@ const run = async () => {
       ];
     };
 
-    await benchmark(conn, COLL_NAME, pipeLineBuilder, 5);
+    await benchmark(conn, COLL_NAME, pipeLineBuilder, 2);
   }
 
   process.exit(0);

@@ -1,6 +1,6 @@
 ## MongoDb aggregation benchmarks
 
-## How to run
+### How to run
 1. Define env variables
 
 See .env.sample
