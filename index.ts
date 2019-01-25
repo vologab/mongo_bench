@@ -97,7 +97,7 @@ const aggregationQuery3 = [
       _id: `$${categoryField}`,
       avg_number: { $avg: `$${integerField}` },
       max_number: { $max: `$${integerField}` },
-      mean_number: { $max: `$${integerField}` },
+      min_number: { $min: `$${integerField}` },
       date_min: { $min: `$${dateField}` },
       date_max: { $max: `$${dateField}` },
       flag_true_count: {
