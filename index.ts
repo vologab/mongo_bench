@@ -153,7 +153,9 @@ const buildIndexes = async (conn: Db, indexes: string[]) => {
 
 const generate = async (conn: Db) => {
   // Clear old data
-  await conn.collection(COLL_NAME).drop();
+  try {
+    await conn.collection(COLL_NAME).drop();
+  } catch (err) {}
 
   // Generate new data
   let documents = [];
