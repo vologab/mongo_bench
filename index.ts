@@ -95,11 +95,12 @@ const aggregationQuery3 = [
   {
     $group: {
       _id: `$${categoryField}`,
-      avg_number: { $avg: `$${integerField}` },
-      max_number: { $max: `$${integerField}` },
-      min_number: { $min: `$${integerField}` },
+      number_avg: { $avg: `$${integerField}` },
+      number_max: { $max: `$${integerField}` },
+      number_min: { $min: `$${integerField}` },
       date_min: { $min: `$${dateField}` },
       date_max: { $max: `$${dateField}` },
+      string_last: { $last: `$${stringField}` },
       flag_true_count: {
         $sum: { $cond: [{ $eq: [`$${booleanField}`, true] }, 1, 0] }
       },
