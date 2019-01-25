@@ -80,15 +80,14 @@ const aggregationQuery1Fun = (months: number) => [
       [dateField]: {
         $gte: new Date(new Date().setMonth(new Date().getMonth() - months)),
         $lte: new Date(new Date().setMonth(new Date().getMonth()))
-      },
-      [booleanField]: true
+      }
     }
   }
 ];
 
 const aggregationQuery2 = [
   {
-    $sort: { [dateField]: 1 }
+    $sort: { [dateField]: -1 }
   }
 ];
 
@@ -97,6 +96,16 @@ const aggregationQuery3 = [
     $group: {
       _id: `$${categoryField}`,
       avg_number: { $avg: `$${integerField}` },
+      max_number: { $max: `$${integerField}` },
+      mean_number: { $max: `$${integerField}` },
+      date_min: { $min: `$${dateField}` },
+      date_max: { $max: `$${dateField}` },
+      flag_true_count: {
+        $sum: { $cond: [{ $eq: [`$${booleanField}`, true] }, 1, 0] }
+      },
+      flag_false_count: {
+        $sum: { $cond: [{ $eq: [`$${booleanField}`, true] }, 0, 1] }
+      },
       count: { $sum: 1 }
     }
   }
@@ -106,6 +115,7 @@ const aggregationQueryLimit = [{ $limit: 200 }];
 
 const getQueryTime = async (conn: Db, collection: string, query: object[]) => {
   const t = new Date().valueOf();
+  // console.log(JSON.stringify(query));
   const additionalOptions: CollectionAggregationOptions = {};
   if (process.env.DB_AGGR_ALLOW_DISK_USE === "true") {
     additionalOptions.allowDiskUse = true;
@@ -183,27 +193,29 @@ const benchmark = async (conn: Db, collection, pipelineBuilder, months) => {
   const dbStat = await getDatabaseStat(conn, COLL_NAME);
   generateReportTitle();
   const results = [];
-  for (let m = 0; m < months; m++) {
+  for (let m = months; m > 0; m--) {
     await conn.command({ planCacheClear: COLL_NAME });
     generateReport(
       dbStat,
-      await measureQueryMultipleTimes(conn, collection, pipelineBuilder(m), 2)
+      await measureQueryMultipleTimes(conn, collection, pipelineBuilder(m), 5)
     );
   }
 };
 
 const generateReportTitle = () => {
   console.log(
-    `Instance, Ram size, Cpu size, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, other response times`
+    `Timestamp, Instance, Ram size, Cpu size, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, other response times`
   );
 };
 const generateReport = (dbStat, r) => {
   console.log(
-    `${process.env.INSTANCE_TYPE},${process.env.RAM_SIZE},${
-      process.env.CPU_CORES
-    },${dbStat.size},${dbStat.count},${dbStat.avgObjSize},${r.count},${_.mean(
-      r.stats
-    )},${Math.round(r.count / _.mean(r.stats))},${r.stats.join(",")}`
+    `${new Date().valueOf()},${process.env.INSTANCE_TYPE},${
+      process.env.RAM_SIZE
+    },${process.env.CPU_CORES},${dbStat.size},${dbStat.count},${
+      dbStat.avgObjSize
+    },${r.count},${_.mean(r.stats)},${Math.round(
+      r.count / _.mean(r.stats)
+    )},${r.stats.join(",")}`
   );
 };
 
