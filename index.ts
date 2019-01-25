@@ -36,7 +36,7 @@ Object.keys(doc.properties)
 
     if (
       doc.properties[k].type == "string" &&
-      doc.properties[k].enum &&
+      doc.properties[k].category1 &&
       !categoryField
     ) {
       categoryField = k;
@@ -115,7 +115,7 @@ const aggregationQueryLimit = [{ $limit: 200 }];
 
 const getQueryTime = async (conn: Db, collection: string, query: object[]) => {
   const t = new Date().valueOf();
-  // console.log(JSON.stringify(query));
+  console.log(JSON.stringify(query));
   const additionalOptions: CollectionAggregationOptions = {};
   if (process.env.DB_AGGR_ALLOW_DISK_USE === "true") {
     additionalOptions.allowDiskUse = true;
@@ -145,9 +145,10 @@ const measureQueryMultipleTimes = async (conn, collection, query, times) => {
 };
 
 const buildIndexes = async (conn: Db, indexes: string[]) => {
-  indexes.forEach(async ix => {
-    await conn.collection(COLL_NAME).createIndex({ [ix]: 1 });
+  const buildIndexPromises = indexes.map(async ix => {
+    return conn.collection(COLL_NAME).createIndex({ [ix]: 1 });
   });
+  return Promise.all(buildIndexPromises);
 };
 
 const generate = async (conn: Db) => {
@@ -204,16 +205,16 @@ const benchmark = async (conn: Db, collection, pipelineBuilder, months) => {
 
 const generateReportTitle = () => {
   console.log(
-    `Timestamp, Instance, Ram size, Cpu size, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, other response times`
+    `Timestamp, Instance, Ram size, Cpu size, Storage, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, other response times`
   );
 };
 const generateReport = (dbStat, r) => {
   console.log(
     `${new Date().valueOf()},${process.env.INSTANCE_TYPE},${
       process.env.RAM_SIZE
-    },${process.env.CPU_CORES},${dbStat.size},${dbStat.count},${
-      dbStat.avgObjSize
-    },${r.count},${_.mean(r.stats)},${Math.round(
+    },${process.env.CPU_CORES},${process.env.STORAGE},${dbStat.size},${
+      dbStat.count
+    },${dbStat.avgObjSize},${r.count},${_.mean(r.stats)},${Math.round(
       r.count / _.mean(r.stats)
     )},${r.stats.join(",")}`
   );
@@ -223,8 +224,8 @@ const run = async () => {
   const conn = await getConnection();
   if (process.env.GENERATE_DATA === "true") {
     // Start data generation
-    await buildIndexes(conn, indexes);
     await generate(conn);
+    await buildIndexes(conn, indexes);
   }
 
   if (process.env.RUN_BENCHMARK === "true") {
