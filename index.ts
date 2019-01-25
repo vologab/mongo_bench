@@ -1,17 +1,17 @@
-const mongodb = require("mongodb");
+import { MongoClient, Db, CollectionAggregationOptions } from "mongodb";
 const jsf = require("json-schema-faker");
-const _ = require("lodash");
+import * as _ from "lodash";
 
 jsf.extend("faker", () => require("faker"));
 const doc = require("./doc.json");
 
-const indexes = [];
+const indexes: string[] = [];
 
-let integerField;
-let dateField;
-let categoryField;
-let stringField;
-let booleanField;
+let integerField: string;
+let dateField: string;
+let categoryField: string;
+let stringField: string;
+let booleanField: string;
 
 Object.keys(doc.properties)
   .filter(
@@ -61,8 +61,11 @@ Object.keys(doc.properties)
     indexes.push(k);
   });
 
-const getConnection = async () => {
-  const client = await mongodb.MongoClient.connect(process.env.DB_URI);
+const getConnection = async (): Promise<Db> => {
+  const client = await MongoClient.connect(
+    process.env.DB_URI || "mongodb://localhost:27017",
+    { useNewUrlParser: true }
+  );
   return await client.db(process.env.DB_NAME);
 };
 
@@ -71,7 +74,7 @@ const BATCH_SIZE = Number(process.env.INSERT_BATCH_SIZE);
 const DOC_SIZE_FACTOR = Number(process.env.DOC_SIZE_FACTOR);
 const COLL_NAME = process.env.COLL_NAME;
 
-const aggregationQuery1Fun = months => [
+const aggregationQuery1Fun = (months: number) => [
   {
     $match: {
       [dateField]: {
@@ -101,9 +104,9 @@ const aggregationQuery3 = [
 
 const aggregationQueryLimit = [{ $limit: 200 }];
 
-const getQueryTime = async (conn, collection, query) => {
-  const t = new Date();
-  const additionalOptions = {};
+const getQueryTime = async (conn: Db, collection: string, query: object[]) => {
+  const t = new Date().valueOf();
+  const additionalOptions: CollectionAggregationOptions = {};
   if (process.env.DB_AGGR_ALLOW_DISK_USE === "true") {
     additionalOptions.allowDiskUse = true;
   }
@@ -111,10 +114,10 @@ const getQueryTime = async (conn, collection, query) => {
     .collection(collection)
     .aggregate(query, additionalOptions)
     .toArray();
-  return new Date() - t;
+  return new Date().valueOf() - t;
 };
 
-const getFirstStageSize = async (conn, collection, query) => {
+const getFirstStageSize = async (conn: Db, collection, query) => {
   const countArr = await conn
     .collection(collection)
     .aggregate([query[0], { $count: "count" }])
@@ -131,13 +134,13 @@ const measureQueryMultipleTimes = async (conn, collection, query, times) => {
   return { count, stats };
 };
 
-const buildIndexes = async (conn, indexes) => {
+const buildIndexes = async (conn: Db, indexes: string[]) => {
   indexes.forEach(async ix => {
     await conn.collection(COLL_NAME).createIndex({ [ix]: 1 });
   });
 };
 
-const generate = async conn => {
+const generate = async (conn: Db) => {
   // Clear old data
   await conn.collection(COLL_NAME).drop();
 
@@ -147,13 +150,13 @@ const generate = async conn => {
   let extendedDoc;
 
   for (let i = 0; i < DOCUMENTS_COUNT; i++) {
-    docInitial = jsf.generate(doc);
+    const docInitial = jsf.generate(doc);
     extendedDoc = [...Array(DOC_SIZE_FACTOR).keys()]
       .map(ix => ({
         [`d${ix}`]: docInitial
       }))
       .reduce((a, c) => ({ ...a, ...c }), {});
-    resDoc = { ...docInitial, ...extendedDoc };
+    const resDoc = { ...docInitial, ...extendedDoc };
 
     documents.push(resDoc);
     if (!(i % BATCH_SIZE)) {
@@ -164,7 +167,7 @@ const generate = async conn => {
   }
 };
 
-const getDatabaseStat = async (conn, collection) => {
+const getDatabaseStat = async (conn: Db, collection) => {
   // Get dataset statistics
   const statistics = await conn.collection(COLL_NAME).stats();
   return {
@@ -175,7 +178,7 @@ const getDatabaseStat = async (conn, collection) => {
   };
 };
 
-const benchmark = async (conn, collection, pipelineBuilder, months) => {
+const benchmark = async (conn: Db, collection, pipelineBuilder, months) => {
   // Get database/collection statistics
   const dbStat = await getDatabaseStat(conn, COLL_NAME);
   generateReportTitle();
@@ -184,7 +187,7 @@ const benchmark = async (conn, collection, pipelineBuilder, months) => {
     await conn.command({ planCacheClear: COLL_NAME });
     generateReport(
       dbStat,
-      await measureQueryMultipleTimes(conn, collection, pipelineBuilder(m), 5)
+      await measureQueryMultipleTimes(conn, collection, pipelineBuilder(m), 2)
     );
   }
 };
@@ -223,7 +226,7 @@ const run = async () => {
       ];
     };
 
-    await benchmark(conn, COLL_NAME, pipeLineBuilder, 2);
+    await benchmark(conn, COLL_NAME, pipeLineBuilder, 12);
   }
 
   process.exit(0);
