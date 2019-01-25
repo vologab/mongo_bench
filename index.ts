@@ -116,7 +116,7 @@ const aggregationQueryLimit = [{ $limit: 200 }];
 
 const getQueryTime = async (conn: Db, collection: string, query: object[]) => {
   const t = new Date().valueOf();
-  console.log(JSON.stringify(query));
+  // console.log(JSON.stringify(query));
   const additionalOptions: CollectionAggregationOptions = {};
   if (process.env.DB_AGGR_ALLOW_DISK_USE === "true") {
     additionalOptions.allowDiskUse = true;
