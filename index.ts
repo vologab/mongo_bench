@@ -96,7 +96,7 @@ const aggregationQuery3 = [
   {
     $group: {
       _id: `$${categoryField}`,
-      avg_number: { $avg: `${integerField}` },
+      avg_number: { $avg: `$${integerField}` },
       count: { $sum: 1 }
     }
   }
