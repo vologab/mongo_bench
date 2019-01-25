@@ -181,6 +181,7 @@ const benchmark = async (conn, collection, pipelineBuilder, months) => {
   generateReportTitle();
   const results = [];
   for (let m = 0; m < months; m++) {
+    await conn.command({ planCacheClear: COLL_NAME });
     generateReport(
       dbStat,
       await measureQueryMultipleTimes(conn, collection, pipelineBuilder(m), 5)
