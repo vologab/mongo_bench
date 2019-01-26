@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "generate": "mongodb-dataset-generator"
+    "generate": "GENERATE_DATA=true RUN_BENCHMARK=false ts-node -r dotenv/config index.ts",
+    "benchmark": "GENERATE_DATA=false RUN_BENCHMARK=true ts-node -r dotenv/config index.ts"
   },
   "author": "",
   "license": "ISC",
