@@ -74,12 +74,12 @@ const BATCH_SIZE = Number(process.env.INSERT_BATCH_SIZE);
 const DOC_SIZE_FACTOR = Number(process.env.DOC_SIZE_FACTOR);
 const COLL_NAME = process.env.COLL_NAME;
 
-const aggregationQuery1Fun = (months: number) => [
+const aggregationQuery1Fun = (daysAgo: number) => [
   {
     $match: {
       [dateField]: {
-        $gte: new Date(new Date().setMonth(new Date().getMonth() - months)),
-        $lte: new Date(new Date().setMonth(new Date().getMonth()))
+        $gte: new Date((new Date()).getTime() - (daysAgo * 24 * 60 * 60 * 1000)),
+        $lte: new Date()
       }
     }
   }
@@ -192,16 +192,16 @@ const getDatabaseStat = async (conn: Db, collection) => {
   };
 };
 
-const benchmark = async (conn: Db, collection, pipelineBuilder, months) => {
+const benchmark = async (conn: Db, collection, pipelineBuilder, daysAgo: number[]) => {
   // Get database/collection statistics
   const dbStat = await getDatabaseStat(conn, COLL_NAME);
   generateReportTitle();
   const results = [];
-  for (let m = months; m > 0; m--) {
+  for (let d of daysAgo) {
     await conn.command({ planCacheClear: COLL_NAME });
     generateReport(
       dbStat,
-      await measureQueryMultipleTimes(conn, collection, pipelineBuilder(m), 5)
+      await measureQueryMultipleTimes(conn, collection, pipelineBuilder(d), 5)
     );
   }
 };
@@ -233,16 +233,16 @@ const run = async () => {
 
   if (process.env.RUN_BENCHMARK === "true") {
     // Start benchamarking
-    const pipeLineBuilder = months => {
+    const pipeLineBuilder = daysAgo => {
       return [
-        ...aggregationQuery1Fun(months),
+        ...aggregationQuery1Fun(daysAgo),
         ...aggregationQuery2,
         ...aggregationQuery3,
         ...aggregationQueryLimit
       ];
     };
 
-    await benchmark(conn, COLL_NAME, pipeLineBuilder, 12);
+    await benchmark(conn, COLL_NAME, pipeLineBuilder, [1, 2, 5, 10, 15, 25, ...[...Array(12).keys()].map(e => (e+1)*30)]);
   }
 
   process.exit(0);
