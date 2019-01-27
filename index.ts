@@ -198,7 +198,9 @@ const benchmark = async (conn: Db, collection, pipelineBuilder, daysAgo: number[
   generateReportTitle();
   const results = [];
   for (let d of daysAgo) {
+    if (process.env.CLEAR_PLAN_CACHE === "true") {
     await conn.command({ planCacheClear: COLL_NAME });
+    }
     generateReport(
       dbStat,
       await measureQueryMultipleTimes(conn, collection, pipelineBuilder(d), 5)
