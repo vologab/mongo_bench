@@ -157,7 +157,7 @@ const benchmark = async (conn: Db, collection, pipelineBuilder, daysAgo: number[
 
 const generateReportTitle = () => {
   console.log(
-    `Timestamp, Instance, Ram size, Cpu size, Storage, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, Cpu user, Cpu system, Wait, Mem total, Mem free, Mem used, Mem buff, other response times`
+    `Timestamp, Instance, Ram size, Cpu size, Storage, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, Cpu user, Cpu nice, Cpu system, Cpu iowait, Mem free, Mem used, Mem usage, other response times`
   );
 };
 const generateReport = (dbStat, r) => {
@@ -169,19 +169,19 @@ const generateReport = (dbStat, r) => {
     },${dbStat.avgObjSize},${r.count},${_.mean(r.stats)},${Math.round(
       r.count / _.mean(r.stats)
     )},${
-      (r.sys[0].cpu[0]+r.sys[1].cpu[0])/2
+      (r.sys[0].cpu[0] + r.sys[1].cpu[0])/2
     },${
-      (r.sys[0].cpu[1]+r.sys[1].cpu[1])/2
+      (r.sys[0].cpu[1] + r.sys[1].cpu[1])/2
     },${
-      (r.sys[0].cpu[2]+r.sys[1].cpu[2])/2
+      (r.sys[0].cpu[2] + r.sys[1].cpu[2])/2
     },${
-      (r.sys[0].mem[0]+r.sys[1].mem[0])/2
+      (r.sys[0].cpu[3] + r.sys[1].cpu[3])/2
     },${
-      (r.sys[0].mem[1]+r.sys[1].mem[1])/2
+      (r.sys[0].mem[0] + r.sys[1].mem[0])/2
     },${
-      (r.sys[0].mem[2]+r.sys[1].mem[2])/2
+      (r.sys[0].mem[1] + r.sys[1].mem[1])/2
     },${
-      (r.sys[0].mem[3]+r.sys[1].mem[3])/2
+      (r.sys[0].mem[2] + r.sys[1].mem[2])/2
     },${r.stats.join(",")}`
   );
 };
