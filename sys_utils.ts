@@ -15,8 +15,8 @@ export const execPromise = (command): Promise<string> => {
 
 export const getSysLoadData = async () => {
 
-    const commandCpuUsage = "top -b -n 1 | head -n 3 | tail -n 1 | awk '{print $2,$4,$10}'";
-    const commandMemUsage = "top -b -n 1 | head -n 4 | tail -n 1 | awk '{print $4,$6,$8,$10}'";
+    const commandCpuUsage = "top -d 5 -b -n 1 | head -n 3 | tail -n 1 | awk '{print $2,$4,$10}'";
+    const commandMemUsage = "top -d 5 -b -n 1 | head -n 4 | tail -n 1 | awk '{print $4,$6,$8,$10}'";
     
     // For testing on MAC OS
     // const commandCpuUsage = `docker run --rm -t ubuntu:latest bash -c "top -n 1 | head -n 3 | tail -n 1 | awk '{print \\$2,\\$4,\\$10}'"`;
