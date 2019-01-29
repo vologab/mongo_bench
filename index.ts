@@ -86,15 +86,18 @@ const getFirstStageSize = async (conn: Db, collection, query) => {
 const measureQueryMultipleTimes = async (conn, collection, query, times) => {
   const stats = [];
   const sys = [];
+  let sysMeasureInterval = 1;
+  let sysMeasureTimes = 1;
   const count = await getFirstStageSize(conn, collection, query);
   for (let i = 0; i < times; i++) {
-    const sysLoad1Promise = getSysLoadData();
+    const sysLoadPromise = getSysLoadData(sysMeasureInterval, sysMeasureTimes);
     const queryPromise = getQueryTime(conn, collection, query);
-    const sysLoad2Promise = getSysLoadData();
-    const [sysLoadRes1, queryRes, sysLoad2Res] = await Promise.all([sysLoad1Promise, queryPromise, sysLoad2Promise]);
+    const [sysLoadRes, queryRes] = await Promise.all([sysLoadPromise, queryPromise]);
+    sysMeasureInterval = Math.round(queryRes/(1000*sysMeasureTimes));
+    sysMeasureInterval = sysMeasureInterval > 1 ? sysMeasureInterval : 1;
+    sysMeasureTimes = sysMeasureInterval * sysMeasureTimes > 5 ? 5 : 1;
     stats.push(queryRes);
-    sys.push(sysLoadRes1);
-    sys.push(sysLoad2Res);
+    sys.push(sysLoadRes)
   }
   return { count, stats, sys };
 };
@@ -169,19 +172,19 @@ const generateReport = (dbStat, r) => {
     },${dbStat.avgObjSize},${r.count},${_.mean(r.stats)},${Math.round(
       r.count / _.mean(r.stats)
     )},${
-      (r.sys[0].cpu[0] + r.sys[1].cpu[0])/2
+      _.mean(r.sys.map(x => x.cpu[0]))
     },${
-      (r.sys[0].cpu[1] + r.sys[1].cpu[1])/2
+      _.mean(r.sys.map(x => x.cpu[1]))
     },${
-      (r.sys[0].cpu[2] + r.sys[1].cpu[2])/2
+      _.mean(r.sys.map(x => x.cpu[2]))
     },${
-      (r.sys[0].cpu[3] + r.sys[1].cpu[3])/2
+      _.mean(r.sys.map(x => x.cpu[3]))
     },${
-      (r.sys[0].mem[0] + r.sys[1].mem[0])/2
+      _.mean(r.sys.map(x => x.mem[0]))
     },${
-      (r.sys[0].mem[1] + r.sys[1].mem[1])/2
+      _.mean(r.sys.map(x => x.mem[1]))
     },${
-      (r.sys[0].mem[2] + r.sys[1].mem[2])/2
+      _.mean(r.sys.map(x => x.mem[2]))
     },${r.stats.join(",")}`
   );
 };

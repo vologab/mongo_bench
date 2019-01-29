@@ -13,15 +13,18 @@ export const execPromise = (command): Promise<string> => {
     });
 }
 
-export const getSysLoadData = async () => {
+export const getSysLoadData = async (intervalSeconds: number = 1, times: number = 1) => {
 
-    const commandCpuUsage = "sar -u 1 3 | tail -n 1 | awk '{print $3,$4,$5,$6}'";
-    const commandMemUsage = "sar -r 1 3 | tail -n 1 | awk '{print $2,$3,$4}'";
+    const commandCpuUsage = `sar -u ${intervalSeconds} ${times} | tail -n 1 | awk '{print $3,$4,$5,$6}'`;
+    const commandMemUsage = `sar -r ${intervalSeconds} ${times} | tail -n 1 | awk '{print $2,$3,$4}'`;
     
     // For testing on MAC OS
-    // const commandCpuUsage = `docker run -i --rm buzztaiki/sysstat:centos5 bash -c "sar -u 1 3 | tail -n 1 | awk '{print \\$3,\\$4,\\$5,\\$6}'"`;
-    // const commandMemUsage = `docker run -i --rm buzztaiki/sysstat:centos5 bash -c "sar -r 1 3 | tail -n 1 | awk '{print \\$2,\\$3,\\$4}'"`;
+    // const commandCpuUsage = `docker run -i --rm buzztaiki/sysstat:centos5 bash -c "sar -u ${intervalSeconds} ${times} | tail -n 1 | awk '{print \\$3,\\$4,\\$5,\\$6}'"`;
+    // const commandMemUsage = `docker run -i --rm buzztaiki/sysstat:centos5 bash -c "sar -r ${intervalSeconds} ${times} | tail -n 1 | awk '{print \\$2,\\$3,\\$4}'"`;
     
+    // console.log(commandCpuUsage);
+    // console.log(commandMemUsage);
+
     const cpuUsage = await execPromise(commandCpuUsage);
     const memUsage = await execPromise(commandMemUsage);    
     // console.log('cpu usage:', cpuUsage.replace(/\s+/g, ','));
