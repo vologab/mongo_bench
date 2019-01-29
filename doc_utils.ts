@@ -1,3 +1,7 @@
+const jsf = require("json-schema-faker");
+import * as _ from "lodash";
+jsf.extend("faker", () => require("faker"));
+
 export const getQueryFields = (doc: any) => {
   let integerField: string;
   let dateField: string;
@@ -58,3 +62,16 @@ export const getQueryFields = (doc: any) => {
         booleanField
     }
 };
+
+export const docGenerate = (doc: any) => {
+    return jsf.generate(doc);
+}
+
+export const extendDoc = (doc: any, extensionFactor: number) => {
+    const extendedDoc = [...Array(extensionFactor).keys()]
+      .map(ix => ({
+        [`d${ix}`]: doc
+      }))
+      .reduce((a, c) => ({ ...a, ...c }), {});
+    return { ...doc, ...extendedDoc };
+}

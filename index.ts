@@ -1,9 +1,6 @@
 import { MongoClient, Db, CollectionAggregationOptions } from "mongodb";
-const jsf = require("json-schema-faker");
 import * as _ from "lodash";
-import { getQueryFields } from "./doc_utils";
-
-jsf.extend("faker", () => require("faker"));
+import { getQueryFields, docGenerate, extendDoc } from "./doc_utils";
 const doc = require("./doc.json");
 
 let {integerField, dateField, categoryField, stringField, booleanField} = getQueryFields(doc);
@@ -113,14 +110,7 @@ const generate = async (conn: Db) => {
   let extendedDoc;
 
   for (let i = 0; i < DOCUMENTS_COUNT; i++) {
-    const docInitial = jsf.generate(doc);
-    extendedDoc = [...Array(DOC_SIZE_FACTOR).keys()]
-      .map(ix => ({
-        [`d${ix}`]: docInitial
-      }))
-      .reduce((a, c) => ({ ...a, ...c }), {});
-    const resDoc = { ...docInitial, ...extendedDoc };
-
+    const resDoc = extendDoc(docGenerate(doc), DOC_SIZE_FACTOR);
     documents.push(resDoc);
     if (!(i % BATCH_SIZE)) {
       await conn.collection(COLL_NAME).insertMany(documents);
