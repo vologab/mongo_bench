@@ -1,6 +1,7 @@
 import { MongoClient, Db, CollectionAggregationOptions } from "mongodb";
 import * as _ from "lodash";
 import { getQueryFields, docGenerate, extendDoc } from "./doc_utils";
+import { getSysLoadData } from "./sys_utils";
 const doc = require("./doc.json");
 
 let {integerField, dateField, categoryField, stringField, booleanField} = getQueryFields(doc);
@@ -84,11 +85,21 @@ const getFirstStageSize = async (conn: Db, collection, query) => {
 
 const measureQueryMultipleTimes = async (conn, collection, query, times) => {
   const stats = [];
+  const sys = [];
+  let sysMeasureInterval = 1;
+  let sysMeasureTimes = 1;
   const count = await getFirstStageSize(conn, collection, query);
   for (let i = 0; i < times; i++) {
-    stats.push(await getQueryTime(conn, collection, query));
+    const sysLoadPromise = getSysLoadData(sysMeasureInterval, sysMeasureTimes);
+    const queryPromise = getQueryTime(conn, collection, query);
+    const [sysLoadRes, queryRes] = await Promise.all([sysLoadPromise, queryPromise]);
+    sysMeasureInterval = Math.round(queryRes/(1000*sysMeasureTimes));
+    sysMeasureInterval = sysMeasureInterval > 1 ? sysMeasureInterval : 1;
+    sysMeasureTimes = sysMeasureInterval * sysMeasureTimes > 5 ? 5 : 1;
+    stats.push(queryRes);
+    sys.push(sysLoadRes)
   }
-  return { count, stats };
+  return { count, stats, sys };
 };
 
 const buildIndexes = async (conn: Db, indexes: string[]) => {
@@ -149,7 +160,7 @@ const benchmark = async (conn: Db, collection, pipelineBuilder, daysAgo: number[
 
 const generateReportTitle = () => {
   console.log(
-    `Timestamp, Instance, Ram size, Cpu size, Storage, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, other response times`
+    `Timestamp, Instance, Ram size, Cpu size, Storage, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, Cpu user, Cpu nice, Cpu system, Cpu iowait, Mem free, Mem used, Mem usage, other response times`
   );
 };
 const generateReport = (dbStat, r) => {
@@ -160,7 +171,21 @@ const generateReport = (dbStat, r) => {
       dbStat.count
     },${dbStat.avgObjSize},${r.count},${_.mean(r.stats)},${Math.round(
       r.count / _.mean(r.stats)
-    )},${r.stats.join(",")}`
+    )},${
+      _.mean(r.sys.map(x => x.cpu[0]))
+    },${
+      _.mean(r.sys.map(x => x.cpu[1]))
+    },${
+      _.mean(r.sys.map(x => x.cpu[2]))
+    },${
+      _.mean(r.sys.map(x => x.cpu[3]))
+    },${
+      _.mean(r.sys.map(x => x.mem[0]))
+    },${
+      _.mean(r.sys.map(x => x.mem[1]))
+    },${
+      _.mean(r.sys.map(x => x.mem[2]))
+    },${r.stats.join(",")}`
   );
 };
 
