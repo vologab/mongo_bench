@@ -2,19 +2,12 @@ import { MongoClient, Db, CollectionAggregationOptions } from "mongodb";
 import * as _ from "lodash";
 import { getQueryFields, docGenerate, extendDoc } from "./doc_utils";
 import { getSysLoadData } from "./sys_utils";
+import { getMongogoDbConnection } from "./db_utils";
 const doc = require("./doc.json");
 
 let {integerField, dateField, categoryField, stringField, booleanField} = getQueryFields(doc);
 const indexes: string[] = [integerField, dateField, categoryField, stringField, booleanField];
 
-
-const getConnection = async (): Promise<Db> => {
-  const client = await MongoClient.connect(
-    process.env.DB_URI || "mongodb://localhost:27017",
-    { connectTimeoutMS: 700000, socketTimeoutMS: 700000, useNewUrlParser: true }
-  );
-  return await client.db(process.env.DB_NAME);
-};
 
 const DOCUMENTS_COUNT = Number(process.env.DOCUMENTS_COUNT);
 const BATCH_SIZE = Number(process.env.INSERT_BATCH_SIZE);
@@ -192,7 +185,7 @@ const generateReport = (dbStat, r) => {
 };
 
 const run = async () => {
-  const conn = await getConnection();
+  const conn = await getMongogoDbConnection();
   if (process.env.GENERATE_DATA === "true") {
     // Start data generation
     await generate(conn);
