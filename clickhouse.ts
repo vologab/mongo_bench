@@ -118,29 +118,29 @@ const copy = async () => {
       .find({})
       .sort({ [dateField]: 1 });
 
+    let i = 0;
+    let ws = clickhouse.insert(`INSERT INTO ${process.env.COLL_NAME}`).stream();
     while (documents.hasNext()) {
       const createTblStm = getCHCreateTableStmt(doc, process.env.COLL_NAME);
 
       await clickhouse.query(createTblStm).toPromise();
 
       const fields = getAllFields(doc);
-
-      const recordsCount = Number(process.env.DOCUMENTS_COUNT);
       const batchSize = Number(process.env.INSERT_BATCH_SIZE);
 
-      let data = [];
-
-      for (let i = 0; i < recordsCount; i++) {
-        let insertStmt;
-        const ws = clickhouse
-          .insert(`INSERT INTO ${process.env.COLL_NAME}`)
-          .stream();
+      try {
         await ws.writeRow(genCHInsertData(documents.next(), doc, fields));
-        if (!(data.length % batchSize)) {
+        if (!(i % batchSize)) {
           await ws.exec();
-          data = [];
         }
+      } catch (err) {
+        console.log("Error occured while inserting into db", err);
+        // Retry
+        ws = clickhouse.insert(`INSERT INTO ${process.env.COLL_NAME}`).stream();
+        await ws.writeRow(genCHInsertData(documents.next(), doc, fields));
       }
+
+      i++;
     }
   } catch (err) {
     console.log(err);
