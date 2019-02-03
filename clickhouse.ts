@@ -153,4 +153,8 @@ const run = async () => {
   if (process.env.GENERATE_DATA === "true") {
     await generate();
   }
+
+  if (process.env.COPY_DATA === "true") {
+    await copy();
+  }
 };

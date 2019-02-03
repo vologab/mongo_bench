@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "generate": "GENERATE_DATA=true RUN_BENCHMARK=false ts-node -r dotenv/config index.ts",
     "generate:ch": "GENERATE_DATA=true RUN_BENCHMARK=false ts-node -r dotenv/config clickhouse.ts",
-    "benchmark": "GENERATE_DATA=false RUN_BENCHMARK=true ts-node -r dotenv/config index.ts"
+    "benchmark": "GENERATE_DATA=false RUN_BENCHMARK=true ts-node -r dotenv/config index.ts",
+    "copy:ch": "GENERATE_DATA=false RUN_BENCHMARK=false COPY_DATA=true ts-node -r dotenv/config clickhouse.ts"
   },
   "author": "",
   "license": "ISC",
