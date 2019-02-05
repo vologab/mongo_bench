@@ -20,6 +20,7 @@
     "typescript": "^3.2.4"
   },
   "dependencies": {
+    "@apla/clickhouse": "^1.5.3",
     "clickhouse": "^1.2.10",
     "faker": "^4.1.0",
     "json-schema-faker": "^0.5.0-rc16",

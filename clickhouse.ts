@@ -1,4 +1,5 @@
 import { ClickHouse } from "clickhouse";
+import * as AplaClickHouse from "@apla/clickhouse";
 const jsf = require("json-schema-faker");
 import * as _ from "lodash";
 import { getQueryFields, docGenerate } from "./doc_utils";
@@ -33,7 +34,7 @@ export const getAllFields = (doc: any) => {
     })
     .filter(f => f);
 };
-export const genCHInsertData = (doc: any, schema: any, fields: string[]) => {
+export const genCHInsertData = (doc: any, schema: any, fields: string[], quoted: boolean = false) => {
   return Object.keys(doc)
     .filter(k => fields.includes(k))
     .map(k => {
@@ -46,7 +47,7 @@ export const genCHInsertData = (doc: any, schema: any, fields: string[]) => {
       ) {
         return doc[k];
       }
-      return `'${doc[k]}'`;
+      return quoted ? `'${doc[k]}'` : doc[k];
     });
 };
 export const genCHInsertStatement = (
@@ -58,26 +59,24 @@ export const genCHInsertStatement = (
   return `INSERT INTO ${tblName} (${fields.join(",")}) VALUES ${values}`;
 };
 
-const clickhouse = new ClickHouse({
-  url: process.env.CH_URL,
-  port: Number(process.env.CH_PORT),
-  debug: false,
-  protocol: "http",
-  user: "default",
-  password: "",
-  basicAuth: null,
-  isUseGzip: false,
-  config: {
-    session_timeout: 60,
-    output_format_json_quote_64bit_integers: 0,
-    enable_http_compression: 0
-  }
-});
-
 const generate = async () => {
+  const clickhouse = new ClickHouse({
+    url: `http://${process.env.CH_URL}`,
+    port: Number(process.env.CH_PORT),
+    debug: false,
+    protocol: "http",
+    user: "default",
+    password: "",
+    basicAuth: null,
+    isUseGzip: false,
+    config: {
+      session_timeout: 60,
+      output_format_json_quote_64bit_integers: 0,
+      enable_http_compression: 0
+    }
+  });
   try {
     const createTblStm = getCHCreateTableStmt(doc, process.env.COLL_NAME);
-
     await clickhouse.query(createTblStm).toPromise();
 
     const fields = getAllFields(doc);
@@ -86,16 +85,12 @@ const generate = async () => {
     const batchSize = Number(process.env.INSERT_BATCH_SIZE);
 
     let data = [];
-
+    let ws = clickhouse.insert(`INSERT INTO ${process.env.COLL_NAME}`).stream();
     for (let i = 0; i < recordsCount; i++) {
-      let insertStmt;
-      const ws = clickhouse
-        .insert(`INSERT INTO ${process.env.COLL_NAME}`)
-        .stream();
-      await ws.writeRow(genCHInsertData(docGenerate(doc), doc, fields));
-      if (!(data.length % batchSize)) {
+      await ws.writeRow(genCHInsertData(docGenerate(doc), doc, fields, true));
+      if (!(i % batchSize)) {
         await ws.exec();
-        data = [];
+        ws = clickhouse.insert(`INSERT INTO ${process.env.COLL_NAME}`).stream();
       }
     }
   } catch (err) {
@@ -105,6 +100,13 @@ const generate = async () => {
 
 const copy = async () => {
   try {
+    var ch = new AplaClickHouse({
+      host: process.env.CH_URL,
+      port: Number(process.env.CH_PORT)
+    });
+    const createTblStm = getCHCreateTableStmt(doc, process.env.COLL_NAME);
+    await ch.querying(createTblStm);
+
     const dbConnection = await getMongogoDbConnection();
     const {
       integerField,
@@ -113,41 +115,45 @@ const copy = async () => {
       stringField,
       booleanField
     } = getQueryFields(doc);
+
+    const fields = getAllFields(doc);
+    const batchSize = Number(process.env.INSERT_BATCH_SIZE);
+
     const documents = dbConnection
       .collection(process.env.COLL_NAME)
       .find({})
       .sort({ [dateField]: 1 });
-
     let i = 0;
-    let ws = clickhouse.insert(`INSERT INTO ${process.env.COLL_NAME}`).stream();
-    while (documents.hasNext()) {
-      const createTblStm = getCHCreateTableStmt(doc, process.env.COLL_NAME);
-
-      await clickhouse.query(createTblStm).toPromise();
-
-      const fields = getAllFields(doc);
-      const batchSize = Number(process.env.INSERT_BATCH_SIZE);
-
+    let ws = ch.query(`INSERT INTO ${process.env.COLL_NAME}`, {
+      inputFormat: "TSV"
+      // format: 'JSONEachRow'
+    });
+    while (await documents.hasNext()) {
+      let curDoc = await documents.next();
+      let row = genCHInsertData(curDoc, doc, fields);
       try {
-        await ws.writeRow(genCHInsertData(documents.next(), doc, fields));
+        ws.write(row.join("\t"));
+        i++;
         if (!(i % batchSize)) {
-          await ws.exec();
+          console.log("Write data, batch size:", batchSize);
+          ws.end();
+          ws = ch.query(`INSERT INTO ${process.env.COLL_NAME}`, {
+            inputFormat: "TSV"
+            // format: 'JSONEachRow'
+          });
         }
       } catch (err) {
         console.log("Error occured while inserting into db", err);
-        // Retry
-        ws = clickhouse.insert(`INSERT INTO ${process.env.COLL_NAME}`).stream();
-        await ws.writeRow(genCHInsertData(documents.next(), doc, fields));
+        process.exit(1);
       }
-
-      i++;
     }
+    ws.end();
+    console.log("Database ", process.env.COLL_NAME, " was successfully copied");
+    process.exit();
   } catch (err) {
     console.log(err);
   }
 };
-
-generate();
 
 const run = async () => {
   if (process.env.GENERATE_DATA === "true") {
@@ -158,3 +164,5 @@ const run = async () => {
     await copy();
   }
 };
+
+run();
