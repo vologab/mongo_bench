@@ -39,7 +39,7 @@ export const genCHInsertData = (doc: any, schema: any, fields: string[], quoted:
     .filter(k => fields.includes(k))
     .map(k => {
       if (doc[k] instanceof Date) {
-        return doc[k].valueOf();
+        return Math.round(doc[k].valueOf()/1000);
       } else if (
         !isNaN(doc[k]) &&
         (schema.properties[k].type === "number" ||
