@@ -12,6 +12,7 @@ export const getCHCreateTableStmt = (doc: any, tblName: string) => {
     .reduce((a, c) => {
       if (doc.properties[c].type === "string") return `${a}${c} String,`;
       if (doc.properties[c].type === "integer") return `${a}${c} UInt16,`;
+      if (doc.properties[c].type === "boolean") return `${a}${c} UInt8,`;
       if (doc.properties[c].faker === "date.past") {
         dateField = c;
         return `${a}${c} DateTime,`;
@@ -26,7 +27,7 @@ export const getAllFields = (doc: any) => {
   return Object.keys(doc.properties)
     .map(f => {
       if (
-        ["string", "integer"].includes(doc.properties[f].type) ||
+        ["string", "integer", "boolean"].includes(doc.properties[f].type) ||
         doc.properties[f]["faker"] === "date.past"
       ) {
         return f;
@@ -40,6 +41,8 @@ export const genCHInsertData = (doc: any, schema: any, fields: string[], quoted:
     .map(k => {
       if (doc[k] instanceof Date) {
         return Math.round(doc[k].valueOf()/1000);
+      } else if (typeof doc[k] === 'boolean') {
+        return typeof doc[k] ? 1 : 0;
       } else if (
         !isNaN(doc[k]) &&
         (schema.properties[k].type === "number" ||
@@ -77,6 +80,7 @@ const generate = async () => {
   });
   try {
     const createTblStm = getCHCreateTableStmt(doc, process.env.COLL_NAME);
+    // console.log(createTblStm);
     await clickhouse.query(createTblStm).toPromise();
 
     const fields = getAllFields(doc);
@@ -87,7 +91,9 @@ const generate = async () => {
     let data = [];
     let ws = clickhouse.insert(`INSERT INTO ${process.env.COLL_NAME}`).stream();
     for (let i = 0; i < recordsCount; i++) {
-      await ws.writeRow(genCHInsertData(docGenerate(doc), doc, fields, true));
+      let row = genCHInsertData(docGenerate(doc), doc, fields, true);
+      // console.log(row);
+      await ws.writeRow(row);
       if (!(i % batchSize)) {
         await ws.exec();
         ws = clickhouse.insert(`INSERT INTO ${process.env.COLL_NAME}`).stream();
