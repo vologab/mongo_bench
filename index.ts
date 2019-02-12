@@ -1,8 +1,8 @@
 import { MongoClient, Db, CollectionAggregationOptions } from "mongodb";
-import * as _ from "lodash";
 import { getQueryFields, docGenerate, extendDoc } from "./doc_utils";
 import { getSysLoadData } from "./sys_utils";
 import { getMongogoDbConnection } from "./db_utils";
+import { generateReport } from "./report_utils";
 const doc = require("./doc.json");
 
 let {integerField, dateField, categoryField, stringField, booleanField} = getQueryFields(doc);
@@ -154,33 +154,6 @@ const benchmark = async (conn: Db, collection, pipelineBuilder, daysAgo: number[
 const generateReportTitle = () => {
   console.log(
     `Timestamp, Instance, Ram size, Cpu size, Storage, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, allowDiskUse, Cpu user, Cpu nice, Cpu system, Cpu iowait, Mem free, Mem used, Mem usage, other response times`
-  );
-};
-const generateReport = (dbStat, r) => {
-  console.log(
-    `${new Date().valueOf()},${process.env.INSTANCE_TYPE},${
-      process.env.RAM_SIZE
-    },${process.env.CPU_CORES},${process.env.STORAGE},${dbStat.size},${
-      dbStat.count
-    },${dbStat.avgObjSize},${r.count},${_.mean(r.stats)},${Math.round(
-      r.count / _.mean(r.stats)
-    )},${
-      process.env.DB_AGGR_ALLOW_DISK_USE
-    },${
-      _.mean(r.sys.map(x => x.cpu[0]))
-    },${
-      _.mean(r.sys.map(x => x.cpu[1]))
-    },${
-      _.mean(r.sys.map(x => x.cpu[2]))
-    },${
-      _.mean(r.sys.map(x => x.cpu[3]))
-    },${
-      _.mean(r.sys.map(x => x.mem[0]))
-    },${
-      _.mean(r.sys.map(x => x.mem[1]))
-    },${
-      _.mean(r.sys.map(x => x.mem[2]))
-    },${r.stats.join(",")}`
   );
 };
 
