@@ -303,11 +303,10 @@ const benchmark = async () => {
     ];
     const dbStat = await getTableStat(ch, process.env.COLL_NAME);
 
-    const queryData = queryBuilder(100);
     for (let d of daysList) {
       generateReport(
         dbStat,
-        await measureQueryMultipleTimes(ch, process.env.COLL_NAME, queryData, 5)
+        await measureQueryMultipleTimes(ch, process.env.COLL_NAME, queryBuilder(d), 5)
       );
     }
   } catch (err) {
