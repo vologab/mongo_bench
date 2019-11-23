@@ -1,19 +1,13 @@
 import { MongoClient, Db, CollectionAggregationOptions } from "mongodb";
-import * as _ from "lodash";
 import { getQueryFields, docGenerate, extendDoc } from "./doc_utils";
+import { getSysLoadData } from "./sys_utils";
+import { getMongogoDbConnection } from "./db_utils";
+import { generateReport } from "./report_utils";
 const doc = require("./doc.json");
 
 let {integerField, dateField, categoryField, stringField, booleanField} = getQueryFields(doc);
 const indexes: string[] = [integerField, dateField, categoryField, stringField, booleanField];
 
-
-const getConnection = async (): Promise<Db> => {
-  const client = await MongoClient.connect(
-    process.env.DB_URI || "mongodb://localhost:27017",
-    { connectTimeoutMS: 700000, socketTimeoutMS: 700000, useNewUrlParser: true }
-  );
-  return await client.db(process.env.DB_NAME);
-};
 
 const DOCUMENTS_COUNT = Number(process.env.DOCUMENTS_COUNT);
 const BATCH_SIZE = Number(process.env.INSERT_BATCH_SIZE);
@@ -84,11 +78,21 @@ const getFirstStageSize = async (conn: Db, collection, query) => {
 
 const measureQueryMultipleTimes = async (conn, collection, query, times) => {
   const stats = [];
+  const sys = [];
+  let sysMeasureInterval = 1;
+  let sysMeasureTimes = 1;
   const count = await getFirstStageSize(conn, collection, query);
   for (let i = 0; i < times; i++) {
-    stats.push(await getQueryTime(conn, collection, query));
+    const sysLoadPromise = getSysLoadData(sysMeasureInterval, sysMeasureTimes);
+    const queryPromise = getQueryTime(conn, collection, query);
+    const [sysLoadRes, queryRes] = await Promise.all([sysLoadPromise, queryPromise]);
+    sysMeasureInterval = Math.round(queryRes/(1000*sysMeasureTimes));
+    sysMeasureInterval = sysMeasureInterval > 1 ? sysMeasureInterval : 1;
+    sysMeasureTimes = sysMeasureInterval * sysMeasureTimes > 5 ? 5 : 1;
+    stats.push(queryRes);
+    sys.push(sysLoadRes)
   }
-  return { count, stats };
+  return { count, stats, sys };
 };
 
 const buildIndexes = async (conn: Db, indexes: string[]) => {
@@ -149,23 +153,12 @@ const benchmark = async (conn: Db, collection, pipelineBuilder, daysAgo: number[
 
 const generateReportTitle = () => {
   console.log(
-    `Timestamp, Instance, Ram size, Cpu size, Storage, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, other response times`
-  );
-};
-const generateReport = (dbStat, r) => {
-  console.log(
-    `${new Date().valueOf()},${process.env.INSTANCE_TYPE},${
-      process.env.RAM_SIZE
-    },${process.env.CPU_CORES},${process.env.STORAGE},${dbStat.size},${
-      dbStat.count
-    },${dbStat.avgObjSize},${r.count},${_.mean(r.stats)},${Math.round(
-      r.count / _.mean(r.stats)
-    )},${r.stats.join(",")}`
+    `Timestamp, Instance, Ram size, Cpu size, Storage, Db size, Rows count, Avg Obj size, First stage count, Avg response time, Docs / ms, allowDiskUse, Cpu user, Cpu nice, Cpu system, Cpu iowait, Mem free, Mem used, Mem usage, other response times`
   );
 };
 
 const run = async () => {
-  const conn = await getConnection();
+  const conn = await getMongogoDbConnection();
   if (process.env.GENERATE_DATA === "true") {
     // Start data generation
     await generate(conn);

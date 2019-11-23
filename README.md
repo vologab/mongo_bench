@@ -239,3 +239,52 @@ db.getCollection("agg_perf_test").aggregate(
   }
 ]
 ```
+
+
+## Clickhouse aggregation benchmarks
+Clickhouse row looks like:
+
+```
+┌─category─┬────────────────date─┬─city────────────┬─country─┬─state──┬─zipCode────┬─countryCode─┬─uuid─────────────────────────────────┬─flag─┬─count─┬─url─────────────┬─version─┬─model────┬─locale─┐
+│ AAA      │ 2018-02-01 19:40:06 │ West Wyattburgh │ Tokelau │ Nevada │ 50214-1454 │ LV          │ ebf77ba4-fdc7-4b29-92f4-7963bd73f06d │    1 │   569 │ http://emma.net │ 8.8.5   │ Keyboard │ en     │
+└──────────┴─────────────────────┴─────────────────┴─────────┴────────┴────────────┴─────────────┴──────────────────────────────────────┴──────┴───────┴─────────────────┴─────────┴──────────┴────────┘
+```
+
+Aggregation query:
+
+```
+select
+    t1.country,
+    t1.avg_count,
+    t1.max_count,
+    t1.min_count,
+    t1.min_date,
+    t1.max_date,
+    t1.flag_true_count,
+    t1.flag_false_count,
+    t1.total_count,
+    t2.city
+from
+    (
+        select
+            country,
+            AVG(count) as avg_count,
+            MAX(count) as max_count,
+            MIN(count) as min_count,
+            MIN(date) as min_date,
+            MAX(date) as max_date,
+            countIf(flag) as flag_true_count,
+            countIf(1, flag = 0) as flag_false_count,
+            SUM(count) as total_count
+        from
+            ${process.env.COLL_NAME}
+        where
+            date >= '${fromDate}'
+            and date <= '${toDate}'
+        group by
+            country
+        limit
+            200
+    ) t1
+    left join ${process.env.COLL_NAME} t2 on t1.max_date = date
+```
